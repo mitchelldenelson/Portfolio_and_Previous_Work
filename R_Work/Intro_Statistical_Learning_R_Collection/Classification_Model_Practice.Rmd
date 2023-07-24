@@ -1,0 +1,155 @@
+---
+title: "AQ13_ISLR"
+author: "Mitchell Nelson"
+date: "2022-09-18"
+output: html_document
+---
+
+# Applied Question 13 from ISLR Book
+## Modeling and predicting stock data based on various weeks lag using various statistical classification methods including: 
+## Regular Logistic Regression, Linear Discriminant Analysis, Quadratic Discriminant Analysis, K-Nearest Neighbors, and Naive Bayes methods
+
+```{r}
+library(ISLR2)
+library(MASS)
+library(class)
+library(e1071)
+```
+
+## Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+```{r}
+head(Weekly)
+plot(Weekly)
+Weekly
+```
+
+
+#### Within our data, there are a couple of patterns present in the correlation plot (derived from the plot function).  Notably, we see distinct correlation between Year and VOlume which is a positive exponential model. As far as the other variables are concerned, there does not seem to be any other stand out patterns.
+
+## Creating Logistic Regression model to see significant variables
+
+```{r}
+glm.full <- glm(
+    Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+    data = Weekly, family = binomial
+  )
+summary(glm.full)
+```
+
+####  After running our logistic regression for all of our features against direction, we can see that Lag2 is the only significant feature within our model.
+
+
+## Confusion matrix for our logistic regression
+
+```{r}
+glm.probs <- predict(glm.full, type = "response")  
+glm.probs[1:10]
+glm.pred <- rep("Down", 1089)
+glm.pred[glm.probs > .5] = "Up"
+table(glm.pred, Weekly$Direction)
+mean(glm.pred == Weekly$Direction)
+```
+
+#### From our confusion matrix above, we can see that our logistic regression over-predicts the amount of times that the market will go up with 430 mispredictions.  On average our model is correct roughly 56% of the time.
+
+## Fitting Logistic Regression model using training data from 1990-2008 and testing after
+
+```{r}
+Weekly.tr <- Weekly[Weekly$Year >= 1990 & Weekly$Year <= 2008,]
+Weekly.ts <- Weekly[Weekly$Year > 2008,]
+glm.red <- glm(
+    Direction ~ Lag2,
+    data = Weekly.tr, family = binomial
+  )
+summary(glm.red)
+dim(Weekly.tr)
+```
+
+## Computing confusion matrix against testing data
+
+```{r}
+glm.red.probs <- predict(glm.red, Weekly.ts, type = "response")  
+glm.red.pred <- rep("Down", 104)
+glm.red.pred[glm.red.probs > .5] = "Up"
+table(glm.red.pred, Weekly.ts$Direction)
+mean(glm.red.pred == Weekly.ts$Direction)
+```
+
+## Fitting a Linear Discriminant Analysis similarly to our logistic regression 
+
+```{r}
+lda.fit <- lda(Direction ~ Lag2,
+    data = Weekly.tr)
+lda.fit
+plot(lda.fit)
+```
+
+## Confusion matrix for testing data
+
+```{r}
+lda.pred <- predict(lda.fit, Weekly.ts)
+lda.class <- lda.pred$class
+table(lda.class, Weekly.ts$Direction)
+mean(lda.class == Weekly.ts$Direction)
+```
+
+## Fitting a Quadratic Discriminant Analysis
+
+```{r}
+qda.fit <- qda(Direction ~ Lag2,
+    data = Weekly.tr)
+qda.fit
+```
+## Confusion matrix for testing data
+
+```{r}
+qda.class <- predict(qda.fit, Weekly.ts)$class
+table(qda.class, Weekly.ts$Direction)
+mean(qda.class == Weekly.ts$Direction)
+```
+### Weird result of only predicting that the market will go up, if only!
+
+## Fitting KNN model to our training data 
+
+## First need to create matrices for our function
+
+```{r}
+train <- (Weekly$Year >= 1990 & Weekly$Year <= 2008)
+train.X <- cbind(Weekly$Lag2[train])
+test.X <- cbind(Weekly$Lag2[!train])
+train.Dir <- Weekly$Direction[train]
+
+```
+
+
+```{r}
+set.seed(1)
+knn.pred <- knn(train.X, test.X, train.Dir, k = 1)
+table(knn.pred, Weekly.ts$Direction)
+mean(knn.pred == Weekly.ts$Direction)
+```
+## Fitting a Naive Bayes model
+
+
+```{r}
+nb.fit <- naiveBayes(Direction ~ Lag2, data = Weekly.tr)
+nb.fit
+
+```
+
+## Confusion Matrix for testing data
+
+```{r}
+nb.class <- predict(nb.fit, Weekly.ts)
+table(nb.class, Weekly.ts$Direction)
+mean(nb.class == Weekly.ts$Direction)
+
+```
+
+
+
+
+
+
+
+
