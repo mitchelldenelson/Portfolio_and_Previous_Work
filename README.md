@@ -6,6 +6,8 @@ Recently Added:
 
 ~Previous Work with Time Series and Forecasting
 
+~Some Previous Work in Statistical Learning (Classification)
+
 
 Planning to Add: 
 
