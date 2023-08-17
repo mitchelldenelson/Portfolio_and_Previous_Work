@@ -1,0 +1,202 @@
+---
+title: "Covid_Infection_Modeling_R"
+author: "Mitchell Nelson"
+date: "2023-08-10"
+output: html_document
+---
+
+## Packages
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(faraway)
+library(leaps)
+library(car)
+library(nlme)
+library(corrplot)
+```
+
+
+## Brief Data Cleaning and Updating with More Currents Values (according to the time of this project's completion)
+
+```{r}
+covid <- read.csv("COVID19_state.csv", sep = ",")
+
+#Removed date of school closure
+covid <- covid[, -26]
+
+#Removed DC
+covid <- covid[-8, ]
+
+#Updating counts
+DeathsCurr <- c(1209, 19541, 11366, 29852, 89947, 12273,10826, 2896, 73789, 36217, 1404, 9510, 4921, 37849, 23535,8524, 15322, 17220, 20219, 14422, 2280, 35935, 12752, 20192, 12423, 3262, 23373, 2304, 4195, 2472, 33371, 7438, 10684, 67548, 38360, 14219, 7478, 44578, 3532, 17734, 2901, 25846, 88146, 4740, 20124, 629, 12703, 14402, 6823, 1807)
+
+InfCurr <- c(250000,1300000, 835000, 2000000, 9180000, 1380000, 751000, 261000, 5900000,  2440000, 239000, 761000, 445000,3120000,1700000, 773000, 1330000, 1240000, 1740000,1030000,  242000, 2410000, 1440000, 1430000, 797000, 274000, 2650000, 241000, 497000,307000 , 2240000, 521000, 717000, 5090000, 2690000, 1040000, 714000, 2800000,368000, 1470000, 238000 , 1980000,6730000, 931000,  1690000,122000, 1480000, 1600000 , 500000, 156000  )
+
+covid["DeathsCurr"] <- DeathsCurr
+covid["InfCurr"] <- InfCurr
+
+#Removing old counts
+covid <- covid[, -2]
+covid <- covid[, -2]
+covid <- covid[, -2]
+
+
+covid
+
+```
+## Creating percentages for deaths and infections
+```{r}
+DeathInf <- c()
+InfPop <- c()
+DeathPop = c()
+
+for(i in 1:50)
+{
+InfPop[i] <- covid$InfCurr[i]/covid$Population[i] *100
+DeathInf[i] <- covid$DeathsCurr[i]/ covid$InfCurr[i] *100
+DeathPop[i] <- covid$DeathsCurr[i]/covid$Population[i] *100
+}
+
+covid["InfPop"] <- InfPop
+covid["DeathInf"] <- DeathInf
+covid["DeathPop"] <- DeathPop
+
+covid
+
+```
+
+## Exploratory Data Analysis and Data Visualizations
+
+```{r}
+summary(covid)
+```
+
+
+```{r}
+covidcor <- covid[,-1]
+full_covid_cor <- cor(covidcor)
+corrplot(full_covid_cor, tl.col = "black", tl.cex = .75, order = "hclust")
+
+
+
+covid_cor_test <- cor.mtest(covidcor, conf.level = 0.95)
+corrplot(full_covid_cor, p.mat = covid_cor_test$p, method = 'circle', insig='blank',
+          number.cex = 0.5, tl.col = "black", tl.cex = .75, order = "hclust")
+
+
+DeathsCurr_cor <- as.data.frame(cor(covidcor[,colnames(covidcor) != "DeathsCurr"], covidcor$DeathsCurr))
+InfCurr_cor <- as.data.frame(cor(covidcor[,colnames(covidcor) != "InfCurr"], covidcor$InfCurr))
+
+DeathsCurr_cor
+InfCurr_cor
+
+subset(DeathsCurr_cor, abs(V1) > 0.3)
+subset(InfCurr_cor, abs(V1) > 0.3)
+```
+
+```{r}
+Pop.D.Quart <- ntile(covid$Pop.Density, 4)
+
+ggplot(data = covid, aes(y = DeathInf, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") +
+ stat_summary(fun.y = mean, color = "red") + 
+ scale_y_continuous(name = "Percentage of Deaths Per Infection") +
+ scale_x_continuous(name = "Population Density Grouped by Quartiles")
+ggplot(data = covid, aes(y = DeathsCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
+  stat_summary(fun.y = mean, color = "red")+ 
+ scale_y_continuous(name = "Deaths by Covid") +
+ scale_x_continuous(name = "Population Density Grouped by Quartiles")
+ggplot(data = covid, aes(y = InfCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
+  stat_summary(fun.y = mean, color = "red")+ 
+ scale_y_continuous(name = "Covid Infections") +
+ scale_x_continuous(name = "Population Density Grouped by Quartiles")
+```
+
+```{r}
+ggplot(data = covid, aes(x = Population, y = DeathsCurr)) + geom_point()
+ggplot(data = covid, aes(x = Population, y = InfCurr)) + geom_point()
+ggplot(data = covid, aes(x = Gini, y = DeathsCurr)) + geom_point()
+ggplot(data = covid, aes(x = Gini, y = InfCurr)) + geom_point()
+```
+
+
+```{r}
+ggplot(covid, aes(x = DeathInf)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
+ggplot(covid, aes(x = DeathsCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
+ggplot(covid, aes(x = InfCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
+ggplot(covid, aes(x = Pop.Density)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
+```
+
+```{r}
+
+##AIC:
+covidAIC <- data.frame(covid$DeathInf,  covid$Hospitals, covid$Physicians, covid$Pollution, covid$Smoking.Rate, covid$GDP, covid$ICU.Beds, covid$Income, covid$Gini, covid$Respiratory.Deaths, covid$Flu.Deaths, covid$Health.Spending, covid$Unemployment, covid$Age.0.25,covid$Age.26.54, covid$Age.55.)
+
+covidAIC
+library(leaps)
+head(covidAIC)
+n = length(covidAIC$covid.DeathInf)
+
+b = regsubsets(covid.DeathInf
+~covid.Hospitals+covid.Physicians+covid.Pollution+covid.Smoking.Rate+covid.GDP+covid.ICU.Beds+covid.Income+covid.Gini+covid.Respiratory.Deaths+covid.Flu.Deaths+covid.Health.Spending+covid.Unemployment+covid.Age.0.25+covid.Age.26.54+covid.Age.55., data = covidAIC)
+
+
+rs = summary(b); aic = n*log(rs$rss/n) + 2*(2:16); i = which.min(aic)
+
+
+
+plot(aic ~I(1:15), ylab = "AIC", xlab = "Number of Predictors", type = "o")
+
+
+
+
+aic = covidAIC[,rs$which[i,]];
+
+
+
+
+lmodAIC = lm(covid.DeathInf ~ ., data = aic); summary(lmodAIC)
+```
+
+
+
+
+```{r}
+
+lmodAIC = lm(covid.DeathInf ~ ., data = aic); summary(lmodAIC)
+##Making sure AIC is valid
+vif(lmodAIC)
+
+par(mfrow = c(2,2))
+plot(lmodAIC)
+```
+
+
+```{r}
+##Adjusted R^2
+
+plot(I(1:8), summary(b)$adjr2, type = "o", ylab = expression(Ra^2), xlab = "Number of Predictors", )
+summary(b)
+which.max(rs$adjr2)
+lmodr2 = lm(covid.DeathInf ~ covid.Pollution+covid.Smoking.Rate+covid.Income+covid.Gini+covid.Respiratory.Deaths+
+    covid.Health.Spending+covid.Age.26.54, data = covidAIC)
+summary(lmodr2)
+vif(lmodr2)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
