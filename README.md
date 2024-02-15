@@ -1,4 +1,4 @@
-# Portfolio_and_Previous_Work
+# Portfolio and Previous_Work
 A collection of work completed in my Data Science and Statistics degree at CU Boulder alongside potential new projects as I expand my knowledge.
 
 
