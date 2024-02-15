@@ -4,7 +4,7 @@ A collection of work completed in my Data Science and Statistics degree at CU Bo
 
 Recently Added:
 
-~Covid Infection Modeling Project (Lacking a bit more analysis)
+~Covid Infection Modeling Project 
 
 ~Previous Work with Time Series and Forecasting
 
