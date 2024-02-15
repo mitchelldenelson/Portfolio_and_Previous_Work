@@ -47,6 +47,7 @@ covid
 
 ```
 ## Creating percentages for deaths and infections
+
 ```{r}
 DeathInf <- c()
 InfPop <- c()
@@ -71,6 +72,7 @@ covid
 
 ```{r}
 summary(covid)
+
 ```
 
 
@@ -98,91 +100,181 @@ subset(InfCurr_cor, abs(V1) > 0.3)
 
 ```{r}
 Pop.D.Quart <- ntile(covid$Pop.Density, 4)
+covid.plot <- covid
+covid.plot["Pop.D.Quart"] <- Pop.D.Quart
 
-ggplot(data = covid, aes(y = DeathInf, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") +
- stat_summary(fun.y = mean, color = "red") + 
- scale_y_continuous(name = "Percentage of Deaths Per Infection") +
- scale_x_continuous(name = "Population Density Grouped by Quartiles")
-ggplot(data = covid, aes(y = DeathsCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
+outliers <- function(x) {
+  return(x < quantile(x, .25) - 1.5*IQR(x) | x > quantile(x, .75) + 1.5*IQR(x))
+}
+
+
+covid.plot <- covid.plot %>%
+        group_by(Pop.D.Quart) %>%
+        mutate(outlierDth = ifelse(outliers(DeathsCurr), State, NA))
+
+covid.plot <- covid.plot %>%
+        group_by(Pop.D.Quart) %>%
+        mutate(outlierInf = ifelse(outliers(InfCurr), State, NA))
+
+
+ggplot(data = covid.plot, aes(y = DeathsCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
   stat_summary(fun.y = mean, color = "red")+ 
- scale_y_continuous(name = "Deaths by Covid") +
- scale_x_continuous(name = "Population Density Grouped by Quartiles")
-ggplot(data = covid, aes(y = InfCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
+ scale_y_continuous(name = "Deaths by covid") +
+ scale_x_continuous(name = "Population Density Grouped by Quartiles") +
+    geom_text(aes(label=outlierDth), na.rm=TRUE, vjust=-0.6)
+
+ggplot(data = covid.plot, aes(y = InfCurr, x = Pop.D.Quart, group = Pop.D.Quart)) + geom_boxplot(fill = "light blue") + 
   stat_summary(fun.y = mean, color = "red")+ 
  scale_y_continuous(name = "Covid Infections") +
- scale_x_continuous(name = "Population Density Grouped by Quartiles")
+ scale_x_continuous(name = "Population Density Grouped by Quartiles") +
+  geom_text(aes(label=outlierInf), na.rm=TRUE, vjust=1.2)
+
+
 ```
 
 ```{r}
-ggplot(data = covid, aes(x = Population, y = DeathsCurr)) + geom_point()
-ggplot(data = covid, aes(x = Population, y = InfCurr)) + geom_point()
-ggplot(data = covid, aes(x = Gini, y = DeathsCurr)) + geom_point()
-ggplot(data = covid, aes(x = Gini, y = InfCurr)) + geom_point()
-```
+ggplot(data = covid, aes(x = Population, y = DeathsCurr)) + geom_point() + 
+ scale_y_continuous(name = "Deaths by covid") + 
+  geom_smooth(method = "lm")
 
+ggplot(data = covid, aes(x = Population, y = InfCurr)) + geom_point() + 
+ scale_y_continuous(name = "Covid Infections") + 
+  geom_smooth(method = "lm")
 
-```{r}
-ggplot(covid, aes(x = DeathInf)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
-ggplot(covid, aes(x = DeathsCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
-ggplot(covid, aes(x = InfCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
-ggplot(covid, aes(x = Pop.Density)) + geom_histogram(bins = 10, fill = "light blue", color = "black") 
-```
-
-```{r}
-
-##AIC:
-covidAIC <- data.frame(covid$DeathInf,  covid$Hospitals, covid$Physicians, covid$Pollution, covid$Smoking.Rate, covid$GDP, covid$ICU.Beds, covid$Income, covid$Gini, covid$Respiratory.Deaths, covid$Flu.Deaths, covid$Health.Spending, covid$Unemployment, covid$Age.0.25,covid$Age.26.54, covid$Age.55.)
-
-covidAIC
-library(leaps)
-head(covidAIC)
-n = length(covidAIC$covid.DeathInf)
-
-b = regsubsets(covid.DeathInf
-~covid.Hospitals+covid.Physicians+covid.Pollution+covid.Smoking.Rate+covid.GDP+covid.ICU.Beds+covid.Income+covid.Gini+covid.Respiratory.Deaths+covid.Flu.Deaths+covid.Health.Spending+covid.Unemployment+covid.Age.0.25+covid.Age.26.54+covid.Age.55., data = covidAIC)
-
-
-rs = summary(b); aic = n*log(rs$rss/n) + 2*(2:16); i = which.min(aic)
-
-
-
-plot(aic ~I(1:15), ylab = "AIC", xlab = "Number of Predictors", type = "o")
-
-
-
-
-aic = covidAIC[,rs$which[i,]];
-
-
-
-
-lmodAIC = lm(covid.DeathInf ~ ., data = aic); summary(lmodAIC)
-```
-
-
-
-
-```{r}
-
-lmodAIC = lm(covid.DeathInf ~ ., data = aic); summary(lmodAIC)
-##Making sure AIC is valid
-vif(lmodAIC)
-
-par(mfrow = c(2,2))
-plot(lmodAIC)
 ```
 
 
 ```{r}
-##Adjusted R^2
+ggplot(covid, aes(x = DeathInf)) + geom_histogram(bins = 10, fill = "light blue", color = "black")  + 
+ scale_y_continuous(name = "Number of States") + 
+ scale_x_continuous(name = "Percentage Dead after Infected")
 
-plot(I(1:8), summary(b)$adjr2, type = "o", ylab = expression(Ra^2), xlab = "Number of Predictors", )
-summary(b)
-which.max(rs$adjr2)
-lmodr2 = lm(covid.DeathInf ~ covid.Pollution+covid.Smoking.Rate+covid.Income+covid.Gini+covid.Respiratory.Deaths+
-    covid.Health.Spending+covid.Age.26.54, data = covidAIC)
-summary(lmodr2)
-vif(lmodr2)
+ggplot(covid, aes(x = DeathsCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black")   + 
+ scale_y_continuous(name = "Number of States") + 
+ scale_x_continuous(name = "Current Deaths from Covid")
+
+ggplot(covid, aes(x = InfCurr)) + geom_histogram(bins = 10, fill = "light blue", color = "black")   + 
+ scale_y_continuous(name = "Number of States") + 
+ scale_x_continuous(name = "Current Infections from Covid")
+
+ggplot(covid, aes(x = Pop.Density)) + geom_histogram(bins = 10, fill = "light blue", color = "black")   + 
+ scale_y_continuous(name = "Number of States") + 
+ scale_x_continuous(name = "Population Density")
+
+```
+
+## Deaths per Infection Analysis
+
+```{r}
+covid.DI <- subset(covid, select = -c(Population, Pop.Density, DeathsCurr, InfCurr, InfPop, DeathPop, State))
+
+
+reg.full.DI <- regsubsets(DeathInf ~., data = covidDeathInf)
+reg.full.DI.sum <- summary(reg.full.DI)
+
+which.max(reg.full.DI.sum$adjr2)
+which.min(reg.full.DI.sum$cp)
+which.min(reg.full.DI.sum$bic)
+
+plot(reg.full.DI.sum$adjr2, xlab = "Number of Predictors", ylab = "Adjusted R-Squared", type = "l")
+points(8, reg.full.DI.sum$adjr2[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DI.sum$cp, xlab = "Number of Predictors", ylab = "Mallow CP", type = "l")
+points(7, reg.full.DI.sum$cp[7], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DI.sum$bic, xlab = "Number of Predictors", ylab = "BIC", type = "l")
+points(6, reg.full.DI.sum$bic[6], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DI, scale = "Cp")
+plot(reg.full.DI, scale = "adjr2")
+
+coef(reg.full.DI, 6)
+```
+
+
+
+
+```{r}
+DI.best <- lm(data = covid.DI, DeathInf ~ Gini + ICU.Beds + Smoking.Rate +  Med.Large.Airports + Urban + Age.26.54)
+summary(DI.best)
+plot(DI.best)
+```
+
+## Infected Population Analysis
+```{r}
+covid.IP <- subset(covid, select = -c(Population, Pop.Density, DeathsCurr, InfCurr, DeathInf, DeathPop, State))
+
+reg.full.IP <- regsubsets(InfPop ~., data = covid.IP)
+reg.full.IP.sum <- summary(reg.full.IP)
+
+which.max(reg.full.IP.sum$adjr2)
+which.min(reg.full.IP.sum$cp)
+which.min(reg.full.IP.sum$bic)
+
+plot(reg.full.IP.sum$adjr2, xlab = "Number of Predictors", ylab = "Adjusted R-Squared", type = "l")
+points(8, reg.full.IP.sum$adjr2[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.IP.sum$cp, xlab = "Number of Predictors", ylab = "Mallow CP", type = "l")
+points(8, reg.full.IP.sum$cp[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.IP.sum$bic, xlab = "Number of Predictors", ylab = "BIC", type = "l")
+points(3, reg.full.IP.sum$bic[3], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.IP, scale = "bic")
+plot(reg.full.IP, scale = "Cp")
+plot(reg.full.IP, scale = "adjr2")
+
+coef(reg.full.IP, 8)
+```
+
+```{r}
+IP.best <- lm(data = covid.IP, InfPop ~ Gini + ICU.Beds + Income + Sex.Ratio + Physicians + Hospitals + Health.Spending + Age.0.25)
+summary(IP.best)
+plot(IP.best)
+```
+
+
+## Dead Population Analysis
+```{r}
+covid.DP <- subset(covid, select = -c(Population, Pop.Density, DeathsCurr, InfCurr, InfPop, DeathInf, State))
+
+
+reg.full.DP <- regsubsets(DeathPop ~., data = covid.DP)
+reg.full.DP.sum <- summary(reg.full.DP)
+
+which.max(reg.full.DP.sum$adjr2)
+which.min(reg.full.DP.sum$cp)
+which.min(reg.full.DP.sum$bic)
+
+plot(reg.full.DP.sum$adjr2, xlab = "Number of Predictors", ylab = "Adjusted R-Squared", type = "l")
+points(8, reg.full.DP.sum$adjr2[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DP.sum$cp, xlab = "Number of Predictors", ylab = "Mallow CP", type = "l")
+points(8, reg.full.DP.sum$cp[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DP.sum$bic, xlab = "Number of Predictors", ylab = "BIC", type = "l")
+points(8, reg.full.DP.sum$bic[8], col = "red", cex = 2,
+pch = 20)
+
+plot(reg.full.DP, scale = "bic")
+plot(reg.full.DP, scale = "Cp")
+plot(reg.full.DP, scale = "adjr2")
+
+coef(reg.full.DP, 8)
+```
+
+```{r}
+DP.best <- lm(data = covid.DP, DeathPop ~ Gini + ICU.Beds + Sex.Ratio + Smoking.Rate + Respiratory.Deaths + Med.Large.Airports + Urban + Age.26.54)
+summary(DP.best)
+plot(DP.best)
 ```
 
 
